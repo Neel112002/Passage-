@@ -1,0 +1,48 @@
+# Flutter / Dart / Android Studio
+.dart_tool/
+.packages
+.build/
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Logs
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Flutter build outputs
+build/
+**/GeneratedPluginRegistrant.*
+
+# Android
+android/.gradle/
+android/captures/
+android/app/release/
+android/app/debug/
+android/app/profile/
+android/local.properties
+android/key.properties
+
+# iOS
+ios/Pods/
+ios/Runner.xcodeproj/project.xcworkspace/
+ios/Flutter/Flutter.podspec
+
+# Firebase (IMPORTANT)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Environment
+.env
+*.keystore
+*.jks
+*.pem
+*.p12
