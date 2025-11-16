@@ -1,0 +1,39 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.build/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+
+# Android
+android/.gradle/
+android/captures/
+android/app/release/
+android/app/debug/
+android/app/profile/
+android/local.properties
+android/key.properties
+
+# iOS
+ios/Pods/
+ios/Runner.xcodeproj/project.xcworkspace/
+ios/Flutter/Flutter.podspec
+
+# Firebase keys (IMPORTANT)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Misc
+.DS_Store
+*.log
+.env
+*.keystore
+*.jks
+*.pem
+*.p12

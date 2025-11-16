@@ -1,0 +1,51 @@
+name: passage
+description: "Unlock a world of products with our secure e-commerce platform, featuring a seamless login and signup experience to kickstart your shopping adventure!"
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  image: ^4.0.0
+  firebase_storage: ^13.0.0
+  google_sign_in: '>=6.2.1'
+  video_player_web: ^2.0.0
+  shared_preferences_web: ^2.0.0
+  image_picker_for_web: ^3.0.0
+  firebase_core_web: ^3.0.0
+  firebase_auth_web: ^6.0.0
+  cloud_firestore_web: ^5.0.0
+  fl_chart: 0.68.0
+  http: ^1.0.0
+  crypto: ^3.0.0
+  shared_preferences: ^2.0.0
+  country_picker: ^2.0.0
+  image_picker: '>=1.1.2'
+  video_player: '>=2.9.2'
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.1.0
+  firebase_core: ^4.2.1
+  cloud_firestore: '>=5.5.0'
+  firebase_auth: '>=5.3.3'
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/dreamflow_icon.jpg
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icons/dreamflow_icon.jpg
+  remove_alpha_ios: true
