@@ -4,8 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:passage/models/chat_conversation.dart';
 import 'package:passage/models/chat_message.dart';
+import 'package:passage/services/firebase_auth_service.dart';
 
 class FirestoreChatsService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -24,6 +26,26 @@ class FirestoreChatsService {
       return digest;
     }
     return '${sorted.first}__${sorted.last}';
+  }
+
+  /// Convenience: ensure chat with another user using the current auth user
+  static Future<String> ensureChatWithUser({
+    required String otherUid,
+    String? listingId,
+    String? productName,
+    String? productImageUrl,
+  }) async {
+    final me = FirebaseAuthService.currentUserId;
+    if (me == null || me.isEmpty) {
+      throw StateError('Must be signed in to start a chat');
+    }
+    return ensureChat(
+      meUid: me,
+      otherUid: otherUid,
+      listingId: listingId,
+      productName: productName,
+      productImageUrl: productImageUrl,
+    );
   }
 
   /// ensureChat(otherUid, listingId?)
@@ -65,24 +87,48 @@ class FirestoreChatsService {
     // Use SetOptions(merge: true) to avoid requiring a pre-read.
     await chatRef.set(payload, SetOptions(merge: true));
 
-    // Create/merge ONLY current user's members sub-doc. Other member will
-    // create theirs when they open the chat from their side.
+    // Create/merge current user's members sub-doc.
     await chatRef.collection('members').doc(meUid).set({
       'unread': 0,
       'lastReadAt': FieldValue.serverTimestamp(),
       'typing': false,
     }, SetOptions(merge: true));
+    // Also attempt to create the other member's sub-doc to ensure both exist.
+    try {
+      await chatRef.collection('members').doc(otherUid).set({
+        'unread': 0,
+        'lastReadAt': FieldValue.serverTimestamp(),
+        'typing': false,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // If rules restrict this write, ignore; the other user will create theirs on open.
+      debugPrint('ensureChat: could not create other member doc: $e');
+    }
 
     return chatId;
   }
 
   static Stream<List<ChatConversation>> watchConversationsForUser(String userId) {
+    // Debug log for seller/buyer inbox query visibility
+    debugPrint('InboxQuery { currentUser: $userId }');
+    // Avoid composite index requirement by removing orderBy and sorting client-side.
+    // Firestore often requires a composite index for array-contains + orderBy.
+    // We keep the query simple and then sort by updatedAt (or lastAt) locally.
     return _chats
         .where('members', arrayContains: userId)
-        .orderBy('updatedAt', descending: true)
-        .limit(20)
+        .limit(100)
         .snapshots()
-        .map((snap) => snap.docs.map((d) => ChatConversation.fromMap({...d.data() as Map<String, dynamic>, 'id': d.id})).toList());
+        .map((snap) {
+          final list = snap.docs
+              .map((d) => ChatConversation.fromMap({
+                    ...d.data() as Map<String, dynamic>,
+                    'id': d.id,
+                  }))
+              .toList();
+          // Sort newest first using the parsed lastAt DateTime
+          list.sort((a, b) => b.lastAt.compareTo(a.lastAt));
+          return list;
+        });
   }
 
   static Stream<List<ChatMessage>> watchMessages(String chatId) {
@@ -123,6 +169,8 @@ class FirestoreChatsService {
     Uint8List? imageBytes,
     String imageExtension = 'jpg',
   }) async {
+    // Debug log per spec
+    debugPrint('sendMessage { chatId: $chatId, sender: $senderId }');
     final chatRef = _chats.doc(chatId);
 
     // Build message id exactly as spec: `${Date.now()}_${me}_${rand6}`
@@ -163,10 +211,21 @@ class FirestoreChatsService {
     }, SetOptions(merge: true));
     await batch.commit();
 
-    // Note: We no longer attempt to write to other users' members/{uid} docs here.
-    // The current security rules allow only the owner to update their own member doc.
-    // Unread counts can be derived from lastReadAt vs createdAt or
-    // updated via a Cloud Function if desired.
+    // Best-effort: increment unread for the OTHER member.
+    try {
+      final chatSnap = await chatRef.get();
+      final data = chatSnap.data() as Map<String, dynamic>?;
+      final members = (data?['members'] as List?)?.whereType<String>().toList() ?? const <String>[];
+      if (members.length == 2) {
+        final other = members.first == senderId ? members.last : members.first;
+        await chatRef.collection('members').doc(other).set({
+          'unread': FieldValue.increment(1),
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      // Non-fatal if rules disallow or doc unread path is missing
+      debugPrint('sendMessage: unread increment failed: $e');
+    }
   }
 
   /// Subscribe to messages with pagination support
