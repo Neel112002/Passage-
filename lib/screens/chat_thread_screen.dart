@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:passage/services/firestore_chats_service.dart';
 import 'package:passage/services/firebase_auth_service.dart';
@@ -44,6 +46,19 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   Timer? _typingTimer;
   bool _initialMessageSent = false;
   Set<String> _hiddenForMe = <String>{};
+  String? _headerProductName;
+
+  String _statusLabel(String raw) {
+    switch (raw) {
+      case 'read':
+        return 'Read';
+      case 'delivered':
+        return 'Delivered';
+      case 'sent':
+      default:
+        return 'Sent';
+    }
+  }
 
   @override
   void initState() {
@@ -66,8 +81,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         convoId = widget.chatId!;
       } else {
         // Starting/ensuring a chat from product context
-        convoId = await FirestoreChatsService.ensureChat(
-          meUid: uid,
+        convoId = await FirestoreChatsService.ensureChatWithUser(
           otherUid: widget.sellerId!,
           listingId: widget.productId,
           productName: widget.productName,
@@ -80,6 +94,21 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         _initializing = false;
         _initError = null;
       });
+      // Fetch chat doc to enrich header (product info / other user in future)
+      try {
+        final snap = await FirebaseFirestore.instance.collection('chats').doc(convoId).get();
+        final data = snap.data();
+        if (data != null) {
+          final pn = (data['productName'] ?? '') as String;
+          if (pn.isNotEmpty && mounted) {
+            setState(() {
+              _headerProductName = pn;
+            });
+          }
+        }
+      } catch (_) {
+        // Non-fatal if chat doc cannot be read
+      }
       // Load locally hidden messages for this chat
       final hidden = await LocalHiddenMessagesStore.loadHidden(uid, convoId);
       if (mounted) {
@@ -161,7 +190,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Chat about', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
-                  Text(widget.productName ?? 'Conversation', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(_headerProductName ?? widget.productName ?? 'Conversation', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -176,13 +205,12 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : (_conversationId == null)
                       ? _ErrorView(message: _initError ?? 'Unable to open chat. Permission denied or network issue.', onRetry: _bootstrap)
-                  : StreamBuilder<List<ChatMessage>>(
+                      : StreamBuilder<List<ChatMessage>>(
                       stream: FirestoreChatsService.watchMessages(_conversationId!),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
                           // Log detailed error to help diagnose rules/query issues.
-                          // ignore: avoid_print
-                          print('watchMessages error for chatId=${_conversationId}: ${snapshot.error}');
+                          debugPrint('watchMessages error for chatId=${_conversationId}: ${snapshot.error}');
                           return _ErrorView(
                             message: 'Can\'t load messages: '+snapshot.error.toString(),
                             onRetry: () => setState(() {}),
@@ -194,6 +222,19 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                         if (_conversationId != null && uid != null) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             FirestoreChatsService.markRead(chatId: _conversationId!, meUid: uid);
+                              // Additionally, promote other user's messages to "read".
+                              FirestoreChatsService.markOtherMessagesRead(chatId: _conversationId!, meUid: uid);
+                              // And mark newly received "sent" messages as delivered.
+                              final toDeliver = msgs
+                                  .where((m) => m.senderId != uid && m.status == 'sent')
+                                  .map((m) => m.id)
+                                  .toList();
+                              if (toDeliver.isNotEmpty) {
+                                FirestoreChatsService.markMessagesDelivered(
+                                  chatId: _conversationId!,
+                                  messageIds: toDeliver,
+                                );
+                              }
                           });
                         }
                         return ListView.builder(
@@ -207,7 +248,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                               return const SizedBox.shrink();
                             }
                             final isDeleted = m.isDeletedForEveryone();
-                            return Align(
+                              return Align(
                               alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
                               child: GestureDetector(
                                 onLongPress: () => _onLongPressMessage(context, message: m, mine: mine),
@@ -221,22 +262,37 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                                         ? null
                                         : Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
                                   ),
-                                  child: isDeleted
-                                      ? Text(
-                                          'Message deleted',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            fontStyle: FontStyle.italic,
-                                            color: mine
-                                                ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
-                                                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                    child: Column(
+                                      crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                      children: [
+                                        isDeleted
+                                            ? Text(
+                                                'Message deleted',
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  fontStyle: FontStyle.italic,
+                                                  color: mine
+                                                      ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
+                                                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                                ),
+                                              )
+                                            : Text(
+                                                m.text,
+                                                style: mine
+                                                    ? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimary)
+                                                    : theme.textTheme.bodyMedium,
+                                              ),
+                                        if (mine)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              _statusLabel(m.status),
+                                              style: theme.textTheme.labelSmall?.copyWith(
+                                                color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
+                                              ),
+                                            ),
                                           ),
-                                        )
-                                      : Text(
-                                          m.text,
-                                          style: mine
-                                              ? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimary)
-                                              : theme.textTheme.bodyMedium,
-                                        ),
+                                      ],
+                                    ),
                                 ),
                               ),
                             );

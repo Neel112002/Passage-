@@ -92,7 +92,7 @@ String expectedStorageBucket() {
     final bucket = app.options.storageBucket;
     if (bucket != null && bucket.trim().isNotEmpty) return bucket;
     final projectId = app.options.projectId;
-    if (projectId.trim().isNotEmpty) return '${projectId}.appspot.com';
+    if (projectId.trim().isNotEmpty) return '$projectId.appspot.com';
   } catch (_) {}
   return '';
 }

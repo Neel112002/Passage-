@@ -228,12 +228,31 @@ class FirestoreChatsService {
     }
   }
 
+  /// Batch mark specific messages as delivered. Caller should only pass
+  /// messages where the current user is the recipient.
+  static Future<void> markMessagesDelivered({
+    required String chatId,
+    required List<String> messageIds,
+  }) async {
+    if (messageIds.isEmpty) return;
+    try {
+      final batch = _db.batch();
+      final col = _chats.doc(chatId).collection('messages');
+      for (final id in messageIds) {
+        batch.set(col.doc(id), {'status': 'delivered'}, SetOptions(merge: true));
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('markMessagesDelivered failed: $e');
+    }
+  }
+
   /// Subscribe to messages with pagination support
   static Stream<QuerySnapshot<Map<String, dynamic>>> subscribeMessagesSnapshots(
     String chatId, {
-    int pageSize = 30,
-    DocumentSnapshot? startAfter,
-  }) {
+      int pageSize = 30,
+      DocumentSnapshot? startAfter,
+    }) {
     Query<Map<String, dynamic>> q = _chats
         .doc(chatId)
         .collection('messages')
@@ -252,6 +271,38 @@ class FirestoreChatsService {
       'unread': 0,
       'lastReadAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Mark all messages from the other user as read (recent subset to cap writes).
+  static Future<void> markOtherMessagesRead({
+    required String chatId,
+    required String meUid,
+    int limit = 100,
+  }) async {
+    try {
+      // Avoid composite index: read recent messages by createdAt and filter client-side.
+      final q = await _chats
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get();
+      if (q.docs.isEmpty) return;
+      final batch = _db.batch();
+      for (final d in q.docs) {
+        final data = d.data();
+        final senderId = (data['senderId'] ?? '') as String;
+        if (senderId == meUid) continue;
+        final status = (data['status'] ?? 'sent') as String;
+        if (status != 'read') {
+          batch.set(d.reference, {'status': 'read'}, SetOptions(merge: true));
+        }
+      }
+      await batch.commit();
+    } catch (e) {
+      // Some projects have restrictive rules; this is best-effort.
+      debugPrint('markOtherMessagesRead failed: $e');
+    }
   }
 
   /// Update typing indicator for current user. Caller may debounce.

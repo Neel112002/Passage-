@@ -225,10 +225,10 @@ class _OverviewTabState extends State<_OverviewTab> {
               _metricCard(
                 context,
                 title: 'Revenue',
-                value: '\$' + _revenue.toStringAsFixed(2),
+                value: '\$${_revenue.toStringAsFixed(2)}',
                 icon: Icons.payments,
                 color: Colors.teal,
-                subtitle: 'Avg order: \$' + _avgOrder.toStringAsFixed(2),
+                subtitle: 'Avg order: \$${_avgOrder.toStringAsFixed(2)}',
               ),
               _metricCard(
                 context,
@@ -267,7 +267,7 @@ class _OverviewTabState extends State<_OverviewTab> {
   }
 
   String _formatDateTime(DateTime dt) {
-    final two = (int n) => n.toString().padLeft(2, '0');
+    String two(int n) => n.toString().padLeft(2, '0');
     return '${two(dt.day)}/${two(dt.month)}/${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
   }
 
@@ -397,12 +397,12 @@ class _OrdersTabState extends State<_OrdersTab> {
                     backgroundColor: _statusColor(o.status).withValues(alpha: 0.12),
                     child: Icon(Icons.receipt_long, color: _statusColor(o.status)),
                   ),
-                  title: Text('#' + o.id),
+                  title: Text('#${o.id}'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 2),
-                      Text(o.items.length.toString() + ' items · Total: \$' + o.total.toStringAsFixed(2)),
+                      Text('${o.items.length} items · Total: \$${o.total.toStringAsFixed(2)}'),
                       const SizedBox(height: 2),
                       Text(_formatDateTime(o.createdAt), style: Theme.of(context).textTheme.bodySmall),
                     ],
@@ -468,7 +468,7 @@ class _OrdersTabState extends State<_OrdersTab> {
   }
 
   String _formatDateTime(DateTime dt) {
-    final two = (int n) => n.toString().padLeft(2, '0');
+    String two(int n) => n.toString().padLeft(2, '0');
     return '${two(dt.day)}/${two(dt.month)}/${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
   }
 }
@@ -501,7 +501,7 @@ class _OrderDetailsSheet extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Order ' + order.id, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  child: Text('Order ${order.id}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                 ),
                 Text(order.status.name.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey.shade700)),
               ],
@@ -524,8 +524,8 @@ class _OrderDetailsSheet extends StatelessWidget {
                     ),
                   ),
                   title: Text(it.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text('Qty ' + it.quantity.toString() + ' · \$' + it.unitPrice.toStringAsFixed(2)),
-                  trailing: Text(' \$' + it.lineTotal.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('Qty ${it.quantity} · \$${it.unitPrice.toStringAsFixed(2)}'),
+                  trailing: Text(' \$${it.lineTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 )),
             const SizedBox(height: 6),
             Align(
@@ -534,21 +534,21 @@ class _OrderDetailsSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Subtotal: \$' + order.subtotal.toStringAsFixed(2)),
-                  Text('Shipping: \$' + order.shippingFee.toStringAsFixed(2)),
-                  Text('Tax: \$' + order.tax.toStringAsFixed(2)),
+                  Text('Subtotal: \$${order.subtotal.toStringAsFixed(2)}'),
+                  Text('Shipping: \$${order.shippingFee.toStringAsFixed(2)}'),
+                  Text('Tax: \$${order.tax.toStringAsFixed(2)}'),
                   const SizedBox(height: 6),
-                  Text('Total: \$' + order.total.toStringAsFixed(2), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  Text('Total: \$${order.total.toStringAsFixed(2)}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             if (order.shippingAddressSummary != null)
-              Text('Ship to: ' + order.shippingAddressSummary!, style: theme.textTheme.bodySmall),
+              Text('Ship to: ${order.shippingAddressSummary!}', style: theme.textTheme.bodySmall),
             if (order.paymentSummary != null)
-              Text('Payment: ' + order.paymentSummary!, style: theme.textTheme.bodySmall),
+              Text('Payment: ${order.paymentSummary!}', style: theme.textTheme.bodySmall),
             if (order.trackingNumber != null)
-              Text('Tracking: ' + order.trackingNumber!, style: theme.textTheme.bodySmall),
+              Text('Tracking: ${order.trackingNumber!}', style: theme.textTheme.bodySmall),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
@@ -714,7 +714,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<NotificationType>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Type'),
               items: const [
                 DropdownMenuItem(value: NotificationType.system, child: Text('System')),

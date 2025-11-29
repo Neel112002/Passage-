@@ -161,7 +161,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> with TickerProvider
                               final admins = snap.data!;
                               if (admins.isEmpty) return const SizedBox.shrink();
                               return Text(
-                                'Allowed admins: ' + admins.map((e) => e.email).join(', '),
+                                'Allowed admins: ${admins.map((e) => e.email).join(', ')}',
                                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                               );
                             },

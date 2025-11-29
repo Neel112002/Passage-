@@ -42,7 +42,7 @@ class _AdminProductsTabState extends State<AdminProductsTab> {
 
     final now = DateTime.now();
     final model = AdminProductModel(
-      id: initial?.id ?? 'ap_' + DateTime.now().millisecondsSinceEpoch.toString(),
+      id: initial?.id ?? 'ap_${DateTime.now().millisecondsSinceEpoch}',
       sellerId: FirebaseAuthService.currentUserId ?? '',
       name: res.name,
       description: res.description,
