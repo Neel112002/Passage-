@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:passage/services/local_auth_store.dart';
 import 'package:passage/screens/forgot_password_screen.dart';
@@ -15,8 +14,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,104 +22,15 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isSubmitting = false;
   bool _isGoogleSubmitting = false;
 
-  late final AnimationController _introController;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _logoSlide;
-  late final Animation<Offset> _formSlide;
-
-  late final AnimationController _bgController;
-
-  // Subtle logo pulse and text shimmer
-  late final AnimationController _logoPulseController;
-  late final Animation<double> _logoScale;
-  late final AnimationController _textShimmerController;
-
-  // New: bounce-in for logo on first appearance
-  late final AnimationController _logoBounceController;
-  late final Animation<double> _logoBounceScale;
-
-  // Removed: auth debug state used for temporary footer label
-
   @override
   void initState() {
     super.initState();
-
-    _introController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-
-    _fadeIn = CurvedAnimation(
-      parent: _introController,
-      curve: Curves.easeOut,
-    );
-
-    _logoSlide = Tween<Offset>(
-      begin: const Offset(0, -0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _introController, curve: Curves.easeOut));
-
-    _formSlide = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _introController,
-      curve: const Interval(0.2, 1, curve: Curves.easeOut),
-    ));
-
-    _bgController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat(reverse: true);
-
-    _logoPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    ); // start after bounce completes
-    _logoScale = Tween<double>(begin: 1.0, end: 1.06)
-        .chain(CurveTween(curve: Curves.easeInOut))
-        .animate(_logoPulseController);
-
-    _textShimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat();
-
-    // Bounce-in setup
-    _logoBounceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _logoBounceScale = Tween<double>(begin: 0.6, end: 1.0)
-        .animate(CurvedAnimation(parent: _logoBounceController, curve: Curves.elasticOut));
-
-    // Start pulse after bounce completes
-    _logoBounceController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (mounted) {
-          _logoPulseController.repeat(reverse: true);
-        }
-      }
-    });
-
-    // Kick off intro after first frame for smoothness
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _introController.forward();
-      _logoBounceController.forward();
-      // Removed: _runAuthDebug(); // no longer showing host/project footer or toast
-    });
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _introController.dispose();
-    _bgController.dispose();
-    _logoPulseController.dispose();
-    _textShimmerController.dispose();
-    _logoBounceController.dispose();
     super.dispose();
   }
 
@@ -306,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Animated brand block used on both mobile and wide layouts
+  // Brand block used on both mobile and wide layouts (no animations)
   Widget _brandBlock(
     BuildContext context, {
     double iconSize = 80,
@@ -319,88 +228,43 @@ class _LoginScreenState extends State<LoginScreen>
       fontWeight: FontWeight.w800,
     );
 
-    return FadeTransition(
-      opacity: _fadeIn,
-      child: SlideTransition(
-        position: _logoSlide,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Bounce-in, then gentle pulse
-            ScaleTransition(
-              scale: _logoBounceScale,
-              child: ScaleTransition(
-                scale: _logoScale,
-                child: Hero(
-                  tag: 'app-logo',
-                  child: Icon(
-                    Icons.shopping_bag_outlined,
-                    size: iconSize,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _animatedPassageText(context, style: titleStyle),
-            if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: (subtitleStyle ?? theme.textTheme.titleMedium)?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Hero(
+          tag: 'app-logo',
+          child: Icon(
+            Icons.shopping_bag_outlined,
+            size: iconSize,
+            color: theme.colorScheme.primary,
+          ),
         ),
-      ),
-    );
-  }
-
-  // Shimmering gradient text for "Passage"
-  Widget _animatedPassageText(BuildContext context, {TextStyle? style}) {
-    final theme = Theme.of(context);
-    final effectiveStyle = (style ?? theme.textTheme.headlineMedium)
-            ?.copyWith(fontWeight: FontWeight.w800) ??
-        const TextStyle(fontSize: 24, fontWeight: FontWeight.w800);
-
-    return AnimatedBuilder(
-      animation: _textShimmerController,
-      builder: (context, child) {
-        final t = _textShimmerController.value; // 0..1
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            final base = theme.colorScheme.onSurface;
-            return LinearGradient(
-              colors: [
-                base.withValues(alpha: 0.5),
-                theme.colorScheme.primary,
-                base.withValues(alpha: 0.5),
-              ],
-              stops: const [0.2, 0.5, 0.8],
-              begin: Alignment(-1.0 + 2 * t, 0),
-              end: Alignment(1.0 + 2 * t, 0),
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcIn,
-          child: Text('Passage', style: effectiveStyle),
-        );
-      },
+        const SizedBox(height: 12),
+        Text(
+          'Passage',
+          style: (titleStyle ?? theme.textTheme.headlineMedium)
+              ?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: (subtitleStyle ?? theme.textTheme.titleMedium)?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildForm(BuildContext context, BoxConstraints c) {
     final theme = Theme.of(context);
 
-    final form = FadeTransition(
-      opacity: _fadeIn,
-      child: SlideTransition(
-        position: _formSlide,
-        child: Form(
-          key: _formKey,
-          child: Column(
+    final form = Form(
+      key: _formKey,
+      child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 24),
@@ -600,9 +464,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
 
     return Center(
       child: ConstrainedBox(
@@ -623,60 +485,29 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _animatedBackground(BuildContext context) {
-    final theme = Theme.of(context);
-    return AnimatedBuilder(
-      animation: _bgController,
-      builder: (context, _) {
-        final t = _bgController.value * 2 * math.pi;
-        final dx = math.sin(t) * 0.8;
-        final dy = math.cos(t) * 0.8;
-        return Stack(
-          children: [
-            // Base gradient
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF6F3FF), Color(0xFFE7F7FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            // Moving glow
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(dx, dy),
-                    radius: 1.2,
-                    colors: [
-                      theme.colorScheme.primary.withValues(alpha: 0.12),
-                      Colors.transparent,
-                    ],
-                    stops: const [0, 1],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+  Widget _staticBackground(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF6F3FF), Color(0xFFE7F7FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          _animatedBackground(context),
+          _staticBackground(context),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, c) {
+                final theme = Theme.of(context);
                 final isWide = c.maxWidth >= AppBreakpoints.tablet;
 
                 if (isWide) {
