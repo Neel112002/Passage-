@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:passage/services/firestore_user_profile_service.dart';
+import 'package:passage/services/local_user_profile_store.dart';
+import 'package:passage/models/user_profile.dart';
 
 class FirebaseAuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -124,6 +126,29 @@ class FirebaseAuthService {
           displayName: user.displayName,
           avatarUrl: user.photoURL,
         );
+
+        // Also hydrate the local profile cache so the Home/Profile UI
+        // reflects the Google display name & email immediately.
+        try {
+          final now = DateTime.now();
+          final profile = UserProfile(
+            fullName: (user.displayName ?? '').trim().isEmpty
+                ? (user.email ?? '').split('@').first
+                : user.displayName!.trim(),
+            username: (user.email ?? '').split('@').first,
+            email: user.email ?? '',
+            phone: user.phoneNumber ?? '',
+            bio: '',
+            gender: '',
+            dob: null,
+            avatarUrl: user.photoURL ?? '',
+            createdAt: now,
+            updatedAt: now,
+          );
+          await LocalUserProfileStore.save(profile);
+        } catch (_) {
+          // Local cache issues shouldn't break login; ignore.
+        }
       }
       return user;
     } on FirebaseAuthException catch (e) {
@@ -257,7 +282,6 @@ class FirebaseAuthService {
       rethrow;
     }
   }
-
 }
 
 // Exception used by the UI to guide sign-in when the account exists with a different credential.
@@ -273,5 +297,6 @@ class AccountExistsWithDifferentCredentialException implements Exception {
     required this.originalMessage,
   });
   @override
-  String toString() => '[${originalCode}] '+originalMessage+' (email: '+email+', providers: '+providers.join(',')+')';
+  String toString() =>
+      '[${originalCode}] '+originalMessage+' (email: '+email+', providers: '+providers.join(',')+')';
 }
