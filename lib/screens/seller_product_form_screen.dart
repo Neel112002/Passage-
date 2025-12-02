@@ -314,35 +314,72 @@ class _SellerProductFormScreenState extends State<SellerProductFormScreen> {
                         _SectionCard(
                           title: 'Selling preferences',
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    value: _condition,
-                                    items: const [
-                                      DropdownMenuItem(value: 'New', child: Text('New')),
-                                      DropdownMenuItem(value: 'Like New', child: Text('Like New')),
-                                      DropdownMenuItem(value: 'Good', child: Text('Good')),
-                                      DropdownMenuItem(value: 'Fair', child: Text('Fair')),
-                                      DropdownMenuItem(value: 'For Parts', child: Text('For Parts')),
+                            // Use a Column instead of tight horizontal row so this
+                            // section never overflows on small phone screens.
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isNarrow = constraints.maxWidth < 400;
+                                if (isNarrow) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      DropdownButtonFormField<String>(
+                                        value: _condition,
+                                        items: const [
+                                          DropdownMenuItem(value: 'New', child: Text('New')),
+                                          DropdownMenuItem(value: 'Like New', child: Text('Like New')),
+                                          DropdownMenuItem(value: 'Good', child: Text('Good')),
+                                          DropdownMenuItem(value: 'Fair', child: Text('Fair')),
+                                          DropdownMenuItem(value: 'For Parts', child: Text('For Parts')),
+                                        ],
+                                        onChanged: (v) => setState(() => _condition = v ?? 'Good'),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Condition',
+                                          prefixIcon: Icon(Icons.fact_check_outlined),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      _SwitchTile(
+                                        title: 'Active',
+                                        subtitle: 'Visible in catalog',
+                                        value: _isActive,
+                                        onChanged: (v) => setState(() => _isActive = v),
+                                      ),
                                     ],
-                                    onChanged: (v) => setState(() => _condition = v ?? 'Good'),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Condition',
-                                      prefixIcon: Icon(Icons.fact_check_outlined),
+                                  );
+                                }
+
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        value: _condition,
+                                        items: const [
+                                          DropdownMenuItem(value: 'New', child: Text('New')),
+                                          DropdownMenuItem(value: 'Like New', child: Text('Like New')),
+                                          DropdownMenuItem(value: 'Good', child: Text('Good')),
+                                          DropdownMenuItem(value: 'Fair', child: Text('Fair')),
+                                          DropdownMenuItem(value: 'For Parts', child: Text('For Parts')),
+                                        ],
+                                        onChanged: (v) => setState(() => _condition = v ?? 'Good'),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Condition',
+                                          prefixIcon: Icon(Icons.fact_check_outlined),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _SwitchTile(
-                                    title: 'Active',
-                                    subtitle: 'Visible in catalog',
-                                    value: _isActive,
-                                    onChanged: (v) => setState(() => _isActive = v),
-                                  ),
-                                ),
-                              ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _SwitchTile(
+                                        title: 'Active',
+                                        subtitle: 'Visible in catalog',
+                                        value: _isActive,
+                                        onChanged: (v) => setState(() => _isActive = v),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: 8),
                             _SwitchTile(
@@ -351,28 +388,57 @@ class _SellerProductFormScreenState extends State<SellerProductFormScreen> {
                               onChanged: (v) => setState(() => _pickupOnly = v),
                             ),
                             const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _campusCtrl,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Campus / Community',
-                                      prefixIcon: Icon(Icons.school_outlined),
+                            // Stack campus + pickup in a Column on very narrow
+                            // screens to avoid horizontal overflow.
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isVeryNarrow = constraints.maxWidth < 380;
+                                if (isVeryNarrow) {
+                                  return Column(
+                                    children: [
+                                      TextFormField(
+                                        controller: _campusCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Campus / Community',
+                                          prefixIcon: Icon(Icons.school_outlined),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        controller: _pickupLocationCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Pickup location',
+                                          prefixIcon: Icon(Icons.place_outlined),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _campusCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Campus / Community',
+                                          prefixIcon: Icon(Icons.school_outlined),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _pickupLocationCtrl,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Pickup location',
-                                      prefixIcon: Icon(Icons.place_outlined),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _pickupLocationCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Pickup location',
+                                          prefixIcon: Icon(Icons.place_outlined),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: 8),
                             _SwitchTile(
@@ -421,8 +487,13 @@ class _SellerProductFormScreenState extends State<SellerProductFormScreen> {
                 children: [
                   const Icon(Icons.save, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text(isEdit ? 'Save changes' : 'Publish product',
-                      style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  Text(
+                    isEdit ? 'Save changes' : 'Publish product',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
